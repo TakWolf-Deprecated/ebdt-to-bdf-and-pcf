@@ -1,0 +1,2 @@
+pixel-font-builder==0.0.27
+fonttools==4.53.1
