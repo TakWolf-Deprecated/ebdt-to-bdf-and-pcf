@@ -43,10 +43,13 @@ def main():
     strike_data: dict[str, ebdt_bitmap_format_5 | ebdt_bitmap_format_7] = tt_font['EBDT'].strikeData[4]  # 取字形列表 4，同上
     for glyph_name, bitmap_data in strike_data.items():
         if isinstance(bitmap_data, ebdt_bitmap_format_5):
+            # format_5 度量在上面重用池中
             metrics = metrics_bit_aligned[glyph_name]
         elif isinstance(bitmap_data, ebdt_bitmap_format_7):
+            # format_7 的度量是内嵌的
             metrics = bitmap_data.metrics
         else:
+            # 其他格式暂时未遇到，忽略
             raise RuntimeError(f"字形 '{glyph_name}' 的 bitmap_data 格式需要适配")
 
         # 获取度量
