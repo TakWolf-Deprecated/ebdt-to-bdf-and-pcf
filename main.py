@@ -19,11 +19,11 @@ def main():
     tt_font = TTFont(fonts_dir.joinpath('Zfull-GB.ttf'))
 
     builder = FontBuilder()
-    builder.font_metric.font_size = 10
-    builder.font_metric.horizontal_layout.ascent = 9
+    builder.font_metric.font_size = 12
+    builder.font_metric.horizontal_layout.ascent = 11
     builder.font_metric.horizontal_layout.descent = -1
-    builder.font_metric.vertical_layout.ascent = 5
-    builder.font_metric.vertical_layout.descent = -5
+    builder.font_metric.vertical_layout.ascent = 6
+    builder.font_metric.vertical_layout.descent = -6
 
     builder.meta_info.version = '1.0.0'
     builder.meta_info.family_name = 'Zfull GB'
@@ -33,14 +33,14 @@ def main():
 
     # format_5 中位对其度量是重用的
     metrics_bit_aligned = {}
-    strike: Strike = tt_font['EBLC'].strikes[4]  # 取字形列表 4
+    strike: Strike = tt_font['EBLC'].strikes[4]  # 取字形列表 4，应该是 11*11 的点阵
     for index_sub_table in strike.indexSubTables:
         if index_sub_table.imageFormat == 5:
             for glyph_name in index_sub_table.names:
                 metrics_bit_aligned[glyph_name] = index_sub_table.metrics
 
     # 遍历 EBDT 表
-    strike_data: dict[str, ebdt_bitmap_format_5 | ebdt_bitmap_format_7] = tt_font['EBDT'].strikeData[4]  # 取字形列表 4
+    strike_data: dict[str, ebdt_bitmap_format_5 | ebdt_bitmap_format_7] = tt_font['EBDT'].strikeData[4]  # 取字形列表 4，同上
     for glyph_name, bitmap_data in strike_data.items():
         if isinstance(bitmap_data, ebdt_bitmap_format_5):
             metrics = metrics_bit_aligned[glyph_name]
