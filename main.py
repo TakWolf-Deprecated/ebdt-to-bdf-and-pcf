@@ -28,10 +28,6 @@ def main():
     builder.meta_info.version = '1.0.0'
     builder.meta_info.family_name = 'Zfull GB'
 
-    # cmap 格式相同，直接使用
-    tb_cmap = tt_font.getBestCmap()
-    builder.character_mapping.update(tb_cmap)
-
     # 点阵数据遍历 ebdt 和 eblc 表
     # 格式参考：https://learn.microsoft.com/en-us/typography/opentype/spec/ebdt
 
@@ -89,12 +85,14 @@ def main():
             bitmap=bitmap,
         ))
 
-    # 存在字形缺失的情况，这里手动移除
+    # cmap 格式相同，直接使用
+    # 但存在字形缺失的情况，这里手动移除
     glyph_names = set(glyph.name for glyph in builder.glyphs)
-    for code_point, glyph_name in builder.character_mapping.items():
+    for code_point, glyph_name in tt_font.getBestCmap().items():
         if glyph_name not in glyph_names:
             print(f'缺失字形：{glyph_name}')
-            builder.character_mapping[code_point] = '.notdef'
+            continue
+        builder.character_mapping[code_point] = glyph_name
 
     # 写入到本地保存
     builder.save_bdf(outputs_dir.joinpath('zfull-gb.bdf'))
