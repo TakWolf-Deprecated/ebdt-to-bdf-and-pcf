@@ -83,7 +83,7 @@ def main():
             name=glyph_name,
             horizontal_origin=(hori_bearing_x, hori_bearing_y - height),
             advance_width=hori_advance,
-            vertical_origin_y=vert_bearing_y,
+            vertical_origin=(vert_bearing_x, vert_bearing_y),
             advance_height=vert_advance,
             bitmap=bitmap,
         ))
