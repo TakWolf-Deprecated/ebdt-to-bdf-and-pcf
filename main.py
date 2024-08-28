@@ -2,7 +2,8 @@ import shutil
 
 from bdffont import BdfFont
 from fontTools.ttLib import TTFont
-from fontTools.ttLib.tables.E_B_D_T_ import ebdt_bitmap_format_5, ebdt_bitmap_format_7
+from fontTools.ttLib.tables.BitmapGlyphMetrics import SmallGlyphMetrics, BigGlyphMetrics
+from fontTools.ttLib.tables.E_B_D_T_ import ebdt_bitmap_format_2, ebdt_bitmap_format_5, ebdt_bitmap_format_7, ebdt_bitmap_format_8
 from fontTools.ttLib.tables.E_B_L_C_ import Strike
 from pixel_font_builder import FontBuilder, Glyph
 
@@ -16,7 +17,7 @@ def main():
     outputs_dir.mkdir(parents=True)
 
     # 需要转换的目标字体
-    tt_font = TTFont(fonts_dir.joinpath('Zfull-GB.ttf'))
+    tt_font = TTFont(fonts_dir.joinpath('cozette.otb'))
 
     builder = FontBuilder()
     builder.font_metric.font_size = 12
@@ -26,46 +27,74 @@ def main():
     builder.font_metric.vertical_layout.descent = -6
 
     builder.meta_info.version = '1.0.0'
-    builder.meta_info.family_name = 'Zfull GB'
+    builder.meta_info.family_name = 'cozette'
 
     # 点阵数据遍历 ebdt 和 eblc 表
     # 格式参考：https://learn.microsoft.com/en-us/typography/opentype/spec/ebdt
 
     # format_5 中位对其度量是重用的
     metrics_bit_aligned = {}
-    strike: Strike = tt_font['EBLC'].strikes[4]  # 取字形列表 4，应该是 11*11 的点阵
+    tb_eblc = tt_font['EBLC']
+    strike: Strike = tb_eblc.strikes[0]  # 取字形列表 0
     for index_sub_table in strike.indexSubTables:
-        if index_sub_table.imageFormat == 5:
+        if index_sub_table.imageFormat == 2:
+            pass
+        elif index_sub_table.imageFormat == 8:
+            pass
+        elif index_sub_table.imageFormat == 5:
             for glyph_name in index_sub_table.names:
                 metrics_bit_aligned[glyph_name] = index_sub_table.metrics
+        else:
+            assert False
 
     # 遍历 EBDT 表
-    strike_data: dict[str, ebdt_bitmap_format_5 | ebdt_bitmap_format_7] = tt_font['EBDT'].strikeData[4]  # 取字形列表 4，同上
+    tb_ebdt = tt_font['EBDT']
+    strike_data: dict[str, ebdt_bitmap_format_2 | ebdt_bitmap_format_5 | ebdt_bitmap_format_7 | ebdt_bitmap_format_8] = tb_ebdt.strikeData[0]  # 取字形列表 0，同上
     for glyph_name, bitmap_data in strike_data.items():
-        if isinstance(bitmap_data, ebdt_bitmap_format_5):
+        if isinstance(bitmap_data, ebdt_bitmap_format_2):
+            metrics = bitmap_data.metrics
+        elif isinstance(bitmap_data, ebdt_bitmap_format_5):
             # format_5 度量在上面重用池中
             metrics = metrics_bit_aligned[glyph_name]
         elif isinstance(bitmap_data, ebdt_bitmap_format_7):
             # format_7 的度量是内嵌的
+            metrics = bitmap_data.metrics
+        elif isinstance(bitmap_data, ebdt_bitmap_format_8):
             metrics = bitmap_data.metrics
         else:
             # 其他格式暂时未遇到，忽略
             raise RuntimeError(f"字形 '{glyph_name}' 的 bitmap_data 格式需要适配")
 
         # 获取度量
-        width = metrics.width
-        height = metrics.height
-        hori_bearing_x = metrics.horiBearingX
-        hori_bearing_y = metrics.horiBearingY
-        hori_advance = metrics.horiAdvance
-        vert_bearing_x = metrics.vertBearingX
-        vert_bearing_y = metrics.vertBearingY
-        vert_advance = metrics.vertAdvance
+        if isinstance(metrics, SmallGlyphMetrics):
+            width = metrics.width
+            height = metrics.height
+            hori_bearing_x = metrics.BearingX
+            hori_bearing_y = metrics.BearingY
+            hori_advance = metrics.Advance
+            vert_bearing_x = -(metrics.BearingX // 2)
+            vert_bearing_y = 0
+            vert_advance = metrics.height
+        elif isinstance(metrics, BigGlyphMetrics):
+            width = metrics.width
+            height = metrics.height
+            hori_bearing_x = metrics.horiBearingX
+            hori_bearing_y = metrics.horiBearingY
+            hori_advance = metrics.horiAdvance
+            vert_bearing_x = metrics.vertBearingX
+            vert_bearing_y = metrics.vertBearingY
+            vert_advance = metrics.vertAdvance
+        else:
+            assert False
 
         # 位图的二进制字符串
         bitmap_string = ''
-        for b in bitmap_data.imageData:
-            bitmap_string += f'{b:08b}'
+        try:
+            for b in bitmap_data.imageData:
+                bitmap_string += f'{b:08b}'
+        except:
+            print("format_8 未适配")
+            continue
 
         # 根据宽高还原出单色位图
         bitmap = []
@@ -98,12 +127,12 @@ def main():
         builder.character_mapping[code_point] = glyph_name
 
     # 写入到本地保存
-    builder.save_bdf(outputs_dir.joinpath('zfull-gb.bdf'))
-    builder.save_pcf(outputs_dir.joinpath('zfull-gb.pcf'))
+    builder.save_bdf(outputs_dir.joinpath('cozette.bdf'))
+    builder.save_pcf(outputs_dir.joinpath('cozette.pcf'))
 
     # 验证一下生成的字体
     # 加载 bdf 字体，然后打印出字形
-    bdf_font = BdfFont.load(outputs_dir.joinpath('zfull-gb.bdf'))
+    bdf_font = BdfFont.load(outputs_dir.joinpath('cozette.bdf'))
     for glyph in bdf_font.glyphs:
         print(f'char: {chr(glyph.encoding)} ({glyph.encoding:04X})')
         print(f'glyph_name: {glyph.name}')
